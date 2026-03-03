@@ -107,14 +107,16 @@ func (h *Handler) handleNotFound(w http.ResponseWriter, subdomain string) {
 }
 
 func (h *Handler) handleUnknown(w http.ResponseWriter, _ *http.Request, subdomain string) {
+	log.Printf("[%s] first request, checking registry for image", subdomain)
 	digest, err := h.registryCheck(subdomain)
 	if err != nil {
-		log.Printf("registry check failed for %s: %v", subdomain, err)
+		log.Printf("[%s] registry check failed: %v", subdomain, err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if digest == "" {
+		log.Printf("[%s] image not found in registry", subdomain)
 		h.state.SetNotFound(subdomain)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusNotFound)
@@ -122,6 +124,7 @@ func (h *Handler) handleUnknown(w http.ResponseWriter, _ *http.Request, subdomai
 		return
 	}
 
+	log.Printf("[%s] image found in registry (digest: %s), starting stack", subdomain, digest)
 	h.state.SetStarting(subdomain)
 	h.startStack(subdomain, digest)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -129,31 +132,35 @@ func (h *Handler) handleUnknown(w http.ResponseWriter, _ *http.Request, subdomai
 }
 
 func (h *Handler) checkAndUpdate(subdomain, currentDigest string) {
+	log.Printf("[%s] checking registry for image updates (current digest: %s)", subdomain, currentDigest)
 	digest, err := h.registryCheck(subdomain)
 	if err != nil {
-		log.Printf("background digest check failed for %s: %v", subdomain, err)
+		log.Printf("[%s] background digest check failed: %v", subdomain, err)
 		return
 	}
 	if digest != "" && digest != currentDigest {
-		log.Printf("image updated for %s: %s -> %s", subdomain, currentDigest, digest)
+		log.Printf("[%s] image updated: %s -> %s", subdomain, currentDigest, digest)
 		h.state.UpdateDigest(subdomain, digest)
 		// Trigger pull+restart via compose manager (caller wires this up)
 	} else {
+		log.Printf("[%s] image unchanged (digest: %s)", subdomain, currentDigest)
 		h.state.UpdateDigest(subdomain, currentDigest)
 	}
 }
 
 func (h *Handler) recheckNotFound(subdomain string) {
+	log.Printf("[%s] rechecking registry for previously missing image", subdomain)
 	digest, err := h.registryCheck(subdomain)
 	if err != nil {
-		log.Printf("recheck failed for %s: %v", subdomain, err)
+		log.Printf("[%s] recheck failed: %v", subdomain, err)
 		return
 	}
 	if digest != "" {
-		log.Printf("image now available for %s", subdomain)
+		log.Printf("[%s] image now available (digest: %s), starting stack", subdomain, digest)
 		h.state.SetStarting(subdomain)
 		h.startStack(subdomain, digest)
 	} else {
+		log.Printf("[%s] image still not found", subdomain)
 		h.state.SetNotFound(subdomain) // reset the timer
 	}
 }

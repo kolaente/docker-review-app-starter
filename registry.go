@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -45,6 +46,8 @@ type RegistryClient struct {
 // CheckTag queries the registry for a tag. Returns the digest if it exists, empty string if not.
 func (rc *RegistryClient) CheckTag(ref *ImageRef) (string, error) {
 	url := fmt.Sprintf("https://%s/v2/%s/manifests/%s", ref.Registry, ref.Repo, ref.Tag)
+	log.Printf("registry: checking %s/%s:%s (url: %s)", ref.Registry, ref.Repo, ref.Tag, url)
+
 	req, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
 		return "", err
@@ -57,14 +60,20 @@ func (rc *RegistryClient) CheckTag(ref *ImageRef) (string, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusNotFound {
+		log.Printf("registry: %s/%s:%s not found (404)", ref.Registry, ref.Repo, ref.Tag)
+		return "", nil
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		log.Printf("registry: %s/%s:%s unauthorized (401)", ref.Registry, ref.Repo, ref.Tag)
 		return "", nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("registry returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("registry returned status %d for %s/%s:%s", resp.StatusCode, ref.Registry, ref.Repo, ref.Tag)
 	}
 
 	digest := resp.Header.Get("Docker-Content-Digest")
+	log.Printf("registry: %s/%s:%s exists (digest: %s)", ref.Registry, ref.Repo, ref.Tag, digest)
 	return digest, nil
 }
 
