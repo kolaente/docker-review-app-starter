@@ -94,7 +94,7 @@ func (rc *RegistryClient) doRegistryRequest(url, token string) (*http.Response, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json")
+	req.Header.Set("Accept", "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
