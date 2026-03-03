@@ -6,7 +6,7 @@ An on-demand reverse proxy that lazily starts Docker Compose stacks when a web r
 
 ## How it works
 
-The system consists of Traefik (TLS termination via wildcard Let's Encrypt certs), a Go-based review proxy, and per-subdomain Compose stacks, all on a shared Docker network.
+The system consists of Traefik (TLS termination via wildcard Let's Encrypt certs), a Go-based review proxy (available as a pre-built image at `ghcr.io/kolaente/docker-review-app-starter`), and per-subdomain Compose stacks, all on a shared Docker network.
 
 When a request arrives for `pr-42.review.example.com`:
 
@@ -26,14 +26,21 @@ When a request arrives for `pr-42.review.example.com`:
 
 ## Setup
 
-1. **Clone the repo**
+1. **Create a directory for the deployment**
 
    ```sh
-   git clone https://github.com/kolaente/docker-review-app-starter.git
-   cd docker-review-app-starter
+   mkdir review-proxy && cd review-proxy
    ```
 
-2. **Create the config file**
+2. **Download the deployment files**
+
+   Grab `docker-compose.yml`, `config.example.yaml`, `docker-compose.template.example.yml`, and `.env.example` from the [repository](https://github.com/kolaente/docker-review-app-starter), or clone it:
+
+   ```sh
+   git clone https://github.com/kolaente/docker-review-app-starter.git .
+   ```
+
+3. **Create the config file**
 
    ```sh
    cp config.example.yaml config.yaml
@@ -41,7 +48,7 @@ When a request arrives for `pr-42.review.example.com`:
 
    Edit `config.yaml` and set your domain, template path, target service name, target port, and idle timeout. See the [Configuration reference](#configuration-reference) below.
 
-3. **Create the Compose template**
+4. **Create the Compose template**
 
    ```sh
    cp docker-compose.template.example.yml docker-compose.template.yml
@@ -49,7 +56,7 @@ When a request arrives for `pr-42.review.example.com`:
 
    Customize the template for your application. See [Compose template](#compose-template) below.
 
-4. **Set environment variables**
+5. **Set environment variables**
 
    ```sh
    cp .env.example .env
@@ -63,13 +70,13 @@ When a request arrives for `pr-42.review.example.com`:
    DOMAIN=review.example.com
    ```
 
-5. **Start the stack**
+6. **Start the stack**
 
    ```sh
    docker compose up -d
    ```
 
-   Traefik will automatically obtain a wildcard certificate for your domain. The review proxy is now listening for requests.
+   This pulls the pre-built proxy image from `ghcr.io/kolaente/docker-review-app-starter`. Traefik will automatically obtain a wildcard certificate for your domain. The review proxy is now listening for requests.
 
 ## Configuration reference
 

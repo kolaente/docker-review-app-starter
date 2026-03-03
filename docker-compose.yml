@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
   proxy:
-    build: .
+    image: ghcr.io/kolaente/docker-review-app-starter:latest
     command: ["-config", "/etc/review-proxy/config.yaml"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
