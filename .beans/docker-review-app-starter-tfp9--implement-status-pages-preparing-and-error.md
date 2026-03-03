@@ -1,10 +1,11 @@
 ---
 # docker-review-app-starter-tfp9
 title: Implement status pages (preparing and error)
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-03-03T14:00:51Z
-updated_at: 2026-03-03T14:00:51Z
+updated_at: 2026-03-03T14:11:22Z
 parent: docker-review-app-starter-014k
 blocked_by:
     - docker-review-app-starter-u6es
