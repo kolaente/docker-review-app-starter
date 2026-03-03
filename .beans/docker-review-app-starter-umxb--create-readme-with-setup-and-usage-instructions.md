@@ -1,10 +1,11 @@
 ---
 # docker-review-app-starter-umxb
 title: Create README with setup and usage instructions
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-03-03T14:03:31Z
-updated_at: 2026-03-03T14:03:31Z
+updated_at: 2026-03-03T14:23:11Z
 parent: docker-review-app-starter-014k
 blocked_by:
     - docker-review-app-starter-l7fg
