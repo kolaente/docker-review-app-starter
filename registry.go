@@ -55,7 +55,7 @@ func (rc *RegistryClient) CheckTag(ref *ImageRef) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("registry request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusUnauthorized {
 		return "", nil

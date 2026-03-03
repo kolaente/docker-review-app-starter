@@ -12,9 +12,13 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Write(content)
-	tmpfile.Close()
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	if _, err := tmpfile.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	cfg, err := LoadConfig(tmpfile.Name())
 	if err != nil {

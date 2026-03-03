@@ -86,14 +86,14 @@ func (h *Handler) handleRunning(w http.ResponseWriter, r *http.Request, subdomai
 		// Container might not be ready yet despite state being "running"
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusBadGateway)
-		fmt.Fprint(w, RenderPreparingPage(subdomain))
+		_, _ = fmt.Fprint(w, RenderPreparingPage(subdomain))
 	}
 	proxy.ServeHTTP(w, r)
 }
 
 func (h *Handler) handleStarting(w http.ResponseWriter, subdomain string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, RenderPreparingPage(subdomain))
+	_, _ = fmt.Fprint(w, RenderPreparingPage(subdomain))
 }
 
 func (h *Handler) handleNotFound(w http.ResponseWriter, subdomain string) {
@@ -103,7 +103,7 @@ func (h *Handler) handleNotFound(w http.ResponseWriter, subdomain string) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, RenderNotFoundPage(subdomain))
+	_, _ = fmt.Fprint(w, RenderNotFoundPage(subdomain))
 }
 
 func (h *Handler) handleUnknown(w http.ResponseWriter, _ *http.Request, subdomain string) {
@@ -118,14 +118,14 @@ func (h *Handler) handleUnknown(w http.ResponseWriter, _ *http.Request, subdomai
 		h.state.SetNotFound(subdomain)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, RenderNotFoundPage(subdomain))
+		_, _ = fmt.Fprint(w, RenderNotFoundPage(subdomain))
 		return
 	}
 
 	h.state.SetStarting(subdomain)
 	h.startStack(subdomain, digest)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, RenderPreparingPage(subdomain))
+	_, _ = fmt.Fprint(w, RenderPreparingPage(subdomain))
 }
 
 func (h *Handler) checkAndUpdate(subdomain, currentDigest string) {

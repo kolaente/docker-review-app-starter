@@ -26,12 +26,15 @@ func RenderTemplate(templatePath, subdomain string) (string, func(), error) {
 	}
 
 	if _, err := tmpfile.WriteString(rendered); err != nil {
-		os.Remove(tmpfile.Name())
+		_ = os.Remove(tmpfile.Name())
 		return "", nil, fmt.Errorf("writing rendered template: %w", err)
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		_ = os.Remove(tmpfile.Name())
+		return "", nil, fmt.Errorf("closing temp file: %w", err)
+	}
 
-	cleanup := func() { os.Remove(tmpfile.Name()) }
+	cleanup := func() { _ = os.Remove(tmpfile.Name()) }
 	return tmpfile.Name(), cleanup, nil
 }
 

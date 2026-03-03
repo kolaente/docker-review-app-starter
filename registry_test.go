@@ -38,10 +38,17 @@ func TestParseImageRef(t *testing.T) {
 
 func TestParseTemplateImageRef(t *testing.T) {
 	content := []byte("services:\n  app:\n    image: registry.example.com/myapp:${SUBDOMAIN}\n    networks:\n      - review-proxy\n")
-	tmpfile, _ := os.CreateTemp("", "template-*.yml")
-	defer os.Remove(tmpfile.Name())
-	tmpfile.Write(content)
-	tmpfile.Close()
+	tmpfile, err := os.CreateTemp("", "template-*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Remove(tmpfile.Name()) }()
+	if _, err := tmpfile.Write(content); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	ref, err := ParseTemplateImageRef(tmpfile.Name())
 	if err != nil {
