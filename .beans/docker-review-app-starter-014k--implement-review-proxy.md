@@ -1,10 +1,11 @@
 ---
 # docker-review-app-starter-014k
 title: Implement review proxy
-status: todo
+status: completed
 type: epic
+priority: normal
 created_at: 2026-03-03T13:58:49Z
-updated_at: 2026-03-03T13:58:49Z
+updated_at: 2026-03-03T14:23:32Z
 ---
 
 # Review Proxy Implementation
