@@ -3,8 +3,9 @@
 title: Add Dockerfile and deployment docker-compose.yml
 status: todo
 type: task
+priority: normal
 created_at: 2026-03-03T14:02:11Z
-updated_at: 2026-03-03T14:02:11Z
+updated_at: 2026-03-03T14:04:16Z
 parent: docker-review-app-starter-014k
 blocked_by:
     - docker-review-app-starter-er0o
@@ -24,7 +25,7 @@ Package the proxy as a Docker image and provide the deployment compose file with
 Create `Dockerfile`:
 
 ```dockerfile
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -32,7 +33,7 @@ RUN go mod download
 COPY *.go ./
 RUN CGO_ENABLED=0 go build -o review-proxy .
 
-FROM alpine:3.19
+FROM alpine:3.21
 RUN apk add --no-cache docker-cli docker-cli-compose
 COPY --from=builder /app/review-proxy /usr/local/bin/review-proxy
 ENTRYPOINT ["review-proxy"]
