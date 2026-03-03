@@ -1,0 +1,54 @@
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=${DNS_PROVIDER:-cloudflare}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/acme
+    env_file:
+      - .env
+    networks:
+      - review-proxy
+    restart: unless-stopped
+
+  proxy:
+    build: .
+    command: ["-config", "/etc/review-proxy/config.yaml"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config.yaml:/etc/review-proxy/config.yaml:ro
+      - ./docker-compose.template.yml:/etc/review-proxy/template.yml:ro
+    networks:
+      - review-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.review.rule=HostRegexp(`.+\\.${DOMAIN}`)"
+      - "traefik.http.routers.review.entrypoints=websecure"
+      - "traefik.http.routers.review.tls=true"
+      - "traefik.http.routers.review.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.review.tls.domains[0].main=${DOMAIN}"
+      - "traefik.http.routers.review.tls.domains[0].sans=*.${DOMAIN}"
+      - "traefik.http.services.review.loadbalancer.server.port=80"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.review-http.rule=HostRegexp(`.+\\.${DOMAIN}`)"
+      - "traefik.http.routers.review-http.entrypoints=web"
+      - "traefik.http.middlewares.review-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.review-http.middlewares=review-redirect"
+    restart: unless-stopped
+
+networks:
+  review-proxy:
+    name: review-proxy
+
+volumes:
+  traefik-certs:

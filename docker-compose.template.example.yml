@@ -1,0 +1,9 @@
+services:
+  app:
+    image: registry.example.com/myapp:${SUBDOMAIN}
+    networks:
+      - review-proxy
+
+networks:
+  review-proxy:
+    external: true
