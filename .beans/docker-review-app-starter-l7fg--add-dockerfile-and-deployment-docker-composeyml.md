@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-03-03T14:02:11Z
-updated_at: 2026-03-03T14:04:16Z
+updated_at: 2026-03-03T14:06:16Z
 parent: docker-review-app-starter-014k
 blocked_by:
     - docker-review-app-starter-er0o
@@ -31,15 +31,14 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
-RUN CGO_ENABLED=0 go build -o review-proxy .
+RUN CGO_ENABLED=0 go build -ldflags='-s -w' -o review-proxy .
 
-FROM alpine:3.21
-RUN apk add --no-cache docker-cli docker-cli-compose
+FROM docker:cli
 COPY --from=builder /app/review-proxy /usr/local/bin/review-proxy
 ENTRYPOINT ["review-proxy"]
 ```
 
-Note: The runtime image needs `docker-cli` and `docker-cli-compose` because the proxy shells out to `docker compose`.
+Note: The binary is statically compiled (CGO_ENABLED=0) with stripped symbols. The `docker:cli` base image provides the `docker` and `docker compose` commands the proxy shells out to.
 
 ### Step 2: Create deployment docker-compose.yml
 
