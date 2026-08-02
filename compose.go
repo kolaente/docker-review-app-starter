@@ -53,7 +53,9 @@ func (cm *ComposeManager) StartStack(subdomain string) error {
 	}
 	defer cleanup()
 
-	cmd := exec.Command("docker", "compose", "-p", projectName(subdomain), "-f", composePath, "up", "-d", "--wait")
+	// --pull always: the local tag may still point at an older digest from a
+	// previous run of this stack, which plain `up` would happily reuse.
+	cmd := exec.Command("docker", "compose", "-p", projectName(subdomain), "-f", composePath, "up", "-d", "--wait", "--pull", "always")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -80,7 +82,7 @@ func (cm *ComposeManager) PullAndRestart(subdomain string) error {
 		return fmt.Errorf("pull failed: %w", err)
 	}
 
-	up := exec.Command("docker", "compose", "-p", projectName(subdomain), "-f", composePath, "up", "-d")
+	up := exec.Command("docker", "compose", "-p", projectName(subdomain), "-f", composePath, "up", "-d", "--wait")
 	up.Stdout = os.Stdout
 	up.Stderr = os.Stderr
 	return up.Run()
