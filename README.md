@@ -15,7 +15,7 @@ When a request arrives for `pr-42.review.example.com`:
 3. **Stack start** -- If the image exists, the proxy renders the Compose template with the subdomain substituted in, starts the stack via `docker compose up`, and serves a "preparing environment" page that auto-refreshes every 3 seconds.
 4. **Reverse proxy** -- Once the container is healthy, subsequent requests are proxied directly to the target service inside the stack.
 5. **Idle cleanup** -- Each stack has an idle timer that resets on every proxied request. When the timeout expires, the stack is torn down with `docker compose down`. The next request starts the flow from the beginning.
-6. **Automatic image updates** -- While a stack is running, the proxy periodically checks the registry for a new image digest. If the image has changed (e.g., a new CI push), it pulls the update and restarts the stack in the background without interrupting active requests.
+6. **Automatic image updates** -- While a stack is running, incoming requests trigger a registry check for a new image digest, at most once per `digest_check_interval` (30s by default). If the image has changed (e.g., a new CI push), the proxy pulls it and recreates the stack in the background; the old container keeps serving until the new one is up. Stacks that are started fresh always pull, so a stale local tag from an earlier run is never reused.
 
 ## Prerequisites
 
@@ -89,6 +89,7 @@ The file `config.yaml` controls the review proxy behavior.
 | `target_service` | string | Name of the service inside the Compose template to proxy requests to (e.g., `app`). |
 | `target_port` | integer | Port the target service listens on inside its container (e.g., `8080`). |
 | `idle_timeout` | duration | How long a stack can remain idle (no proxied requests) before it is torn down. Accepts Go duration strings such as `5m`, `30m`, or `1h`. |
+| `digest_check_interval` | duration | How often an incoming request may trigger a registry check for a newer image of a running stack. Optional, defaults to `30s`. |
 
 Example:
 
@@ -98,6 +99,7 @@ compose_template: docker-compose.template.yml
 target_service: app
 target_port: 8080
 idle_timeout: 5m
+digest_check_interval: 30s
 ```
 
 ## Compose template
