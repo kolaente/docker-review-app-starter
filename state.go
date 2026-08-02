@@ -19,21 +19,24 @@ type StackState struct {
 	Status          StackStatus
 	Digest          string
 	LastDigestCheck time.Time
+	Updating        bool
 	LastRequest     time.Time
 	IdleTimer       *time.Timer
 }
 
 type StateManager struct {
-	mu          sync.Mutex
-	stacks      map[string]*StackState
-	idleTimeout time.Duration
-	onIdle      func(subdomain string) // called when idle timer fires
+	mu                  sync.Mutex
+	stacks              map[string]*StackState
+	idleTimeout         time.Duration
+	digestCheckInterval time.Duration
+	onIdle              func(subdomain string) // called when idle timer fires
 }
 
-func NewStateManager(idleTimeout time.Duration) *StateManager {
+func NewStateManager(idleTimeout, digestCheckInterval time.Duration) *StateManager {
 	return &StateManager{
-		stacks:      make(map[string]*StackState),
-		idleTimeout: idleTimeout,
+		stacks:              make(map[string]*StackState),
+		idleTimeout:         idleTimeout,
+		digestCheckInterval: digestCheckInterval,
 	}
 }
 
@@ -117,22 +120,37 @@ func (sm *StateManager) Touch(subdomain string) {
 	}
 }
 
-func (sm *StateManager) NeedsDigestCheck(subdomain string) bool {
+// ClaimDigestCheck reserves the right to run a registry check, so concurrent
+// requests to a running stack don't each spawn their own check and update.
+// The caller must pair every true with a ReleaseDigestCheck.
+func (sm *StateManager) ClaimDigestCheck(subdomain string) bool {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	s, ok := sm.stacks[subdomain]
-	if !ok || s.Status != StatusRunning {
+	if !ok || s.Status != StatusRunning || s.Updating {
 		return false
 	}
-	return time.Since(s.LastDigestCheck) > 5*time.Minute
+	if time.Since(s.LastDigestCheck) < sm.digestCheckInterval {
+		return false
+	}
+	s.Updating = true
+	s.LastDigestCheck = time.Now()
+	return true
 }
 
-func (sm *StateManager) UpdateDigest(subdomain, digest string) {
+// ReleaseDigestCheck ends a claimed check. An empty digest leaves the recorded
+// one untouched, so a failed check or update is retried next interval.
+func (sm *StateManager) ReleaseDigestCheck(subdomain, digest string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	if s, ok := sm.stacks[subdomain]; ok {
+	s, ok := sm.stacks[subdomain]
+	if !ok {
+		return
+	}
+	s.Updating = false
+	s.LastDigestCheck = time.Now()
+	if digest != "" {
 		s.Digest = digest
-		s.LastDigestCheck = time.Now()
 	}
 }
 

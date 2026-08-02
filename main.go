@@ -26,7 +26,7 @@ func main() {
 	// Initialize components
 	composeMgr := &ComposeManager{TemplatePath: cfg.ComposeTemplate}
 	registryClient := &RegistryClient{HTTPClient: http.DefaultClient}
-	stateMgr := NewStateManager(cfg.IdleTimeout)
+	stateMgr := NewStateManager(cfg.IdleTimeout, cfg.DigestCheckInterval)
 
 	// Registry check function: substitute subdomain into image pattern, parse, check
 	registryCheck := func(subdomain string) (string, error) {
@@ -52,6 +52,12 @@ func main() {
 		}()
 	}
 
+	// Update stack function: pull the new image and recreate, keeping the old
+	// container serving until compose swaps it out
+	updateStack := func(subdomain string) error {
+		return composeMgr.PullAndRestart(subdomain)
+	}
+
 	// Idle callback: stop and clean up the stack
 	stateMgr.SetOnIdle(func(subdomain string) {
 		log.Printf("Idle timeout for %s, stopping stack", subdomain)
@@ -75,7 +81,7 @@ func main() {
 	}
 
 	// Create handler and start server
-	handler := NewHandler(cfg.Domain, stateMgr, registryCheck, startStack)
+	handler := NewHandler(cfg.Domain, stateMgr, registryCheck, startStack, updateStack)
 	handler.SetTarget(cfg.TargetService, cfg.TargetPort)
 
 	log.Printf("Review proxy listening on :80 for *.%s", cfg.Domain)

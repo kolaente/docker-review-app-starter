@@ -15,21 +15,26 @@ type RegistryCheckFunc func(subdomain string) (string, error)
 // StartStackFunc starts a stack for the given subdomain in the background.
 type StartStackFunc func(subdomain string, digest string)
 
+// UpdateStackFunc pulls the new image and recreates the stack. Blocks until done.
+type UpdateStackFunc func(subdomain string) error
+
 type Handler struct {
 	domain        string
 	state         *StateManager
 	registryCheck RegistryCheckFunc
 	startStack    StartStackFunc
+	updateStack   UpdateStackFunc
 	targetService string
 	targetPort    int
 }
 
-func NewHandler(domain string, state *StateManager, registryCheck RegistryCheckFunc, startStack StartStackFunc) *Handler {
+func NewHandler(domain string, state *StateManager, registryCheck RegistryCheckFunc, startStack StartStackFunc, updateStack UpdateStackFunc) *Handler {
 	return &Handler{
 		domain:        domain,
 		state:         state,
 		registryCheck: registryCheck,
 		startStack:    startStack,
+		updateStack:   updateStack,
 		targetService: "app",
 		targetPort:    8080,
 	}
@@ -68,7 +73,7 @@ func (h *Handler) handleRunning(w http.ResponseWriter, r *http.Request, subdomai
 	h.state.Touch(subdomain)
 
 	// Background digest check if stale
-	if h.state.NeedsDigestCheck(subdomain) {
+	if h.state.ClaimDigestCheck(subdomain) {
 		go h.checkAndUpdate(subdomain, state.Digest)
 	}
 
@@ -136,16 +141,23 @@ func (h *Handler) checkAndUpdate(subdomain, currentDigest string) {
 	digest, err := h.registryCheck(subdomain)
 	if err != nil {
 		log.Printf("[%s] background digest check failed: %v", subdomain, err)
+		h.state.ReleaseDigestCheck(subdomain, "")
 		return
 	}
-	if digest != "" && digest != currentDigest {
-		log.Printf("[%s] image updated: %s -> %s", subdomain, currentDigest, digest)
-		h.state.UpdateDigest(subdomain, digest)
-		// Trigger pull+restart via compose manager (caller wires this up)
-	} else {
+	if digest == "" || digest == currentDigest {
 		log.Printf("[%s] image unchanged (digest: %s)", subdomain, currentDigest)
-		h.state.UpdateDigest(subdomain, currentDigest)
+		h.state.ReleaseDigestCheck(subdomain, digest)
+		return
 	}
+
+	log.Printf("[%s] image updated: %s -> %s, pulling and recreating stack", subdomain, currentDigest, digest)
+	if err := h.updateStack(subdomain); err != nil {
+		log.Printf("[%s] stack update failed: %v", subdomain, err)
+		h.state.ReleaseDigestCheck(subdomain, "")
+		return
+	}
+	log.Printf("[%s] stack updated to %s", subdomain, digest)
+	h.state.ReleaseDigestCheck(subdomain, digest)
 }
 
 func (h *Handler) recheckNotFound(subdomain string) {
